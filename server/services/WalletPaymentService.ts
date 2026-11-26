@@ -107,6 +107,10 @@ export class WalletPaymentService {
       .toString('hex')
       .toUpperCase()}`;
     const walletInfo = PLATFORM_CRYPTO_DEPOSIT_ADDRESSES[lockedMethod];
+    const activeAddress =
+      lockedMethod === PaymentMethod.CRYPTO_USDT
+        ? this.store.contactConfig?.usdtDepositAddress?.trim() || walletInfo.address
+        : walletInfo.address;
 
     const record: ServerPaymentRequest = {
       id: `pay_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
@@ -118,7 +122,7 @@ export class WalletPaymentService {
       usdEquivalent: Number(usdAmount.toFixed(2)),
       localCurrencyEquivalent,
       referenceId,
-      destinationOrBankDetails: `${walletInfo.networkLabel} · ${walletInfo.address}`,
+      destinationOrBankDetails: `${walletInfo.networkLabel} · ${activeAddress}`,
       status: 'PENDING',
       createdAt: Date.now(),
     };

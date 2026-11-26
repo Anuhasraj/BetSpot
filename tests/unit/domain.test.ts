@@ -228,4 +228,48 @@ describe('Domain Unit Tests', () => {
       )
     ).toBe(true);
   });
+
+  it('continues into a second tie-breaker when both round 1 and round 2 tie', () => {
+    const strategy = new TierFeeStrategy();
+    const tier = strategy.getTierById(TierId.TIER_1);
+    const users = new Map<string, User>();
+    const p1 = makePlayer('u_tie1', 'tie1', 1000);
+    const p2 = makePlayer('u_tie2', 'tie2', 1000);
+    users.set(p1.id, p1);
+    users.set(p2.id, p2);
+
+    // R1: 4 vs 4 (tie) -> TB1: 3 vs 3 (tie again!) -> TB2: 6 vs 2 (p1 wins)
+    const board = new DiceBoard('b_double_tie', tier, new DeterministicRandom([4, 4, 3, 3, 6, 2]), strategy, 1);
+    board.joinMainSeat(p1, 100);
+    board.joinMainSeat(p2, 100);
+    board.startMatchIfReady((id) => users.get(id));
+
+    // Round 1
+    board.closeSideBetWindowAndAdvanceTurn();
+    board.rollForCurrentPlayer((id) => users.get(id)); // p1 = 4
+    board.closeSideBetWindowAndAdvanceTurn();
+    board.rollForCurrentPlayer((id) => users.get(id)); // p2 = 4 -> Tie-Breaker #1
+    expect(board.phase).toBe(GamePhase.SIDE_BET_WINDOW);
+    expect(board.tieBreakerUserIds).toEqual([p1.id, p2.id]);
+
+    // Round 2 (Tie-Breaker #1)
+    board.closeSideBetWindowAndAdvanceTurn();
+    expect(board.phase).toBe(GamePhase.TIE_BREAKER);
+    board.rollForCurrentPlayer((id) => users.get(id)); // p1 = 3
+    board.closeSideBetWindowAndAdvanceTurn();
+    board.rollForCurrentPlayer((id) => users.get(id)); // p2 = 3 -> Must trigger Tie-Breaker #2, NOT settle!
+    expect(board.phase).toBe(GamePhase.SIDE_BET_WINDOW);
+    expect(board.tieBreakerUserIds).toEqual([p1.id, p2.id]);
+    expect(board.matchHistory.length).toBe(0);
+
+    // Round 3 (Tie-Breaker #2)
+    board.closeSideBetWindowAndAdvanceTurn();
+    expect(board.phase).toBe(GamePhase.TIE_BREAKER);
+    board.rollForCurrentPlayer((id) => users.get(id)); // p1 = 6
+    board.closeSideBetWindowAndAdvanceTurn();
+    board.rollForCurrentPlayer((id) => users.get(id)); // p2 = 2 -> p1 wins
+    expect(board.phase).toBe(GamePhase.SETTLED);
+    expect(board.matchHistory[0].winnerUserId).toBe(p1.id);
+    expect(board.matchHistory[0].hadTieBreaker).toBe(true);
+  });
 });

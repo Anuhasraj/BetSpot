@@ -368,29 +368,20 @@ export class PromoRiskService {
       referee.signupIpHash &&
       referrer.signupIpHash === referee.signupIpHash
     ) {
-      referrer.promoRiskFlag = 'SHARED_IP_RING';
-      referee.promoRiskFlag = 'SHARED_IP_RING';
-      referrer.promoAdminNote =
-        referrer.promoAdminNote || `Shared signup IP detected with referred @${referee.username}`;
-      referee.promoAdminNote =
-        referee.promoAdminNote || `Shared signup IP detected with referrer @${referrer.username}`;
+      // Real deposit was verified and approved by Admin — log a shared-IP notice
+      // for admin visibility, but do not withhold the earned referral reward.
       this.ledger.appendRiskAlert(
         {
           type: 'PROMO_IP_CLUSTER_ALERT',
-          severity: 'WARNING',
+          severity: 'INFO',
           userId: referee.id,
           username: referee.username,
-          title: `Blocked Same-IP Referral Bonus: @${referrer.username} <-> @${referee.username}`,
-          details: `Both accounts registered from matching IP hash (${referee.signupIpHash}). Free referral bonus withheld.`,
-          metrics: { referrer: referrer.username, referee: referee.username },
+          title: `Shared-IP Referral Deposit Approved: @${referrer.username} <-> @${referee.username}`,
+          details: `Both accounts registered from matching IP hash (${referee.signupIpHash}), but referred deposit (${depositTokens.toLocaleString()} TKN) was verified and approved.`,
+          metrics: { referrer: referrer.username, referee: referee.username, depositTokens },
         },
         120_000
       );
-      return {
-        awarded: false,
-        rewardTokens: 0,
-        reason: 'Same-IP referral bonus blocked by anti-abuse policy.',
-      };
     }
 
     const totalMintCost = rewardTokens * 2;
