@@ -1,0 +1,10 @@
+{
+  "projectId": "betspot-test01",
+  "appId": "1:376040162066:web:52378b30697eff0a18e9cb",
+  "apiKey": "AIzaSyDsh0r__61wfeep0iShw87nKvJ4jJrqcpU",
+  "authDomain": "betspot-test01.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "betspot-test01.firebasestorage.app",
+  "messagingSenderId": "376040162066",
+  "measurementId": "G-D53PK80WZ0"
+}

@@ -1,0 +1,646 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // -------------------------------------------------------------------------
+    // Global Default-Deny Safety Net
+    // -------------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Core Security Primitives & Identity Helpers
+    // -------------------------------------------------------------------------
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return false;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isNonEmptyString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isOptionalString(data, key, maxLen) {
+      return !(key in data) || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    // -------------------------------------------------------------------------
+    // Entity Validation Blueprints (Anti-Update-Gap Helpers)
+    // -------------------------------------------------------------------------
+    function isValidAdminOperator(data, uid) {
+      return data.keys().hasAll(['uid', 'email', 'username', 'role', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'username', 'role', 'createdAt', 'updatedAt']) &&
+        isValidId(data.uid) &&
+        data.uid == uid &&
+        isNonEmptyString(data.email, 3, 160) &&
+        isNonEmptyString(data.username, 3, 64) &&
+        data.username.matches('^[a-zA-Z0-9_.@\\-]+$') &&
+        data.role == 'ADMIN' &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserAccount(data, userId) {
+      return data.keys().hasAll([
+          'id', 'uid', 'username', 'displayName', 'role', 'status',
+          'availableBalance', 'heldBalance', 'kycStatus', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'uid', 'username', 'displayName', 'role', 'status',
+          'availableBalance', 'heldBalance', 'kycStatus', 'avatarUrl',
+          'avatarFrameId', 'dailyBetLimitTokens', 'referralCode',
+          'promoTokensRemaining', 'realDepositedTokens', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.id == userId &&
+        isValidId(data.uid) &&
+        isNonEmptyString(data.username, 3, 32) &&
+        data.username.matches('^[a-zA-Z0-9_.-]+$') &&
+        isNonEmptyString(data.displayName, 1, 80) &&
+        data.role in ['PLAYER', 'HIGH_ROLLER'] &&
+        data.status in ['ACTIVE', 'SUSPENDED'] &&
+        data.availableBalance is number && data.availableBalance >= 0 &&
+        data.heldBalance is number && data.heldBalance >= 0 &&
+        data.kycStatus in ['UNVERIFIED', 'PENDING', 'VERIFIED'] &&
+        isOptionalString(data, 'avatarUrl', 8192) &&
+        isOptionalString(data, 'avatarFrameId', 64) &&
+        (!('dailyBetLimitTokens' in data) || (data.dailyBetLimitTokens is number && data.dailyBetLimitTokens >= 0)) &&
+        isOptionalString(data, 'referralCode', 32) &&
+        (!('promoTokensRemaining' in data) || (data.promoTokensRemaining is number && data.promoTokensRemaining >= 0)) &&
+        (!('realDepositedTokens' in data) || (data.realDepositedTokens is number && data.realDepositedTokens >= 0)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivateInfo(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'uid', 'email', 'country', 'phoneNumber', 'dateOfBirth', 'ageVerified',
+          'kycDocumentName', 'savedCryptoAddress', 'savedBankName',
+          'savedBankBranch', 'savedBankHolder', 'savedBankAccount', 'updatedAt'
+        ]) &&
+        isValidId(data.uid) &&
+        data.uid == userId &&
+        isNonEmptyString(data.email, 3, 160) &&
+        isOptionalString(data, 'country', 80) &&
+        isOptionalString(data, 'phoneNumber', 40) &&
+        isOptionalString(data, 'dateOfBirth', 24) &&
+        (!('ageVerified' in data) || data.ageVerified is bool) &&
+        isOptionalString(data, 'kycDocumentName', 160) &&
+        isOptionalString(data, 'savedCryptoAddress', 128) &&
+        isOptionalString(data, 'savedBankName', 120) &&
+        isOptionalString(data, 'savedBankBranch', 120) &&
+        isOptionalString(data, 'savedBankHolder', 120) &&
+        isOptionalString(data, 'savedBankAccount', 64) &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidWalletTransaction(data, txId, userId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'type', 'amount', 'balanceAfter', 'heldAfter', 'description', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'userId', 'type', 'amount', 'balanceAfter', 'heldAfter', 'description', 'referenceId', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.id == txId &&
+        isValidId(data.userId) &&
+        data.userId == userId &&
+        isNonEmptyString(data.type, 2, 48) &&
+        data.amount is number &&
+        data.balanceAfter is number && data.balanceAfter >= 0 &&
+        data.heldAfter is number && data.heldAfter >= 0 &&
+        isNonEmptyString(data.description, 1, 240) &&
+        isOptionalString(data, 'referenceId', 128) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidPaymentRequest(data, paymentId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'username', 'kind', 'method', 'tokenAmount',
+          'usdEquivalent', 'referenceId', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'userId', 'username', 'kind', 'method', 'tokenAmount',
+          'usdEquivalent', 'localCurrencyEquivalent', 'referenceId',
+          'destinationOrBankDetails', 'receiptPreviewName', 'status',
+          'adminNote', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.id == paymentId &&
+        isValidId(data.userId) &&
+        isNonEmptyString(data.username, 2, 32) &&
+        data.kind in ['DEPOSIT', 'WITHDRAWAL'] &&
+        isNonEmptyString(data.method, 2, 48) &&
+        data.tokenAmount is number && data.tokenAmount > 0 &&
+        data.usdEquivalent is number && data.usdEquivalent >= 0 &&
+        (!('localCurrencyEquivalent' in data) || (data.localCurrencyEquivalent is number && data.localCurrencyEquivalent >= 0)) &&
+        isNonEmptyString(data.referenceId, 2, 128) &&
+        isOptionalString(data, 'destinationOrBankDetails', 300) &&
+        isOptionalString(data, 'receiptPreviewName', 160) &&
+        data.status in ['PENDING', 'APPROVED', 'REJECTED'] &&
+        isOptionalString(data, 'adminNote', 300) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSupportTicket(data, ticketId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'name', 'email', 'category', 'subject',
+          'message', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'userId', 'name', 'email', 'category', 'referenceId',
+          'subject', 'message', 'status', 'adminReply', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.id == ticketId &&
+        isValidId(data.userId) &&
+        isNonEmptyString(data.name, 2, 80) &&
+        isNonEmptyString(data.email, 3, 160) &&
+        isNonEmptyString(data.category, 2, 64) &&
+        isOptionalString(data, 'referenceId', 128) &&
+        isNonEmptyString(data.subject, 3, 160) &&
+        isNonEmptyString(data.message, 5, 2000) &&
+        data.status in ['Open · Under Review', 'In Progress', 'Resolved'] &&
+        isOptionalString(data, 'adminReply', 1000) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidReferralRecord(data, referralId) {
+      return data.keys().hasAll([
+          'id', 'referrerUserId', 'referrerUsername', 'referrerCode',
+          'refereeUserId', 'refereeUsername', 'status',
+          'qualifyingDepositTokens', 'referrerRewardTokens',
+          'refereeRewardTokens', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'referrerUserId', 'referrerUsername', 'referrerCode',
+          'refereeUserId', 'refereeUsername', 'status',
+          'qualifyingDepositTokens', 'referrerRewardTokens',
+          'refereeRewardTokens', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.id == referralId &&
+        isValidId(data.referrerUserId) &&
+        isNonEmptyString(data.referrerUsername, 2, 32) &&
+        isNonEmptyString(data.referrerCode, 1, 32) &&
+        isValidId(data.refereeUserId) &&
+        isNonEmptyString(data.refereeUsername, 2, 32) &&
+        data.status in ['PENDING_DEPOSIT', 'REWARDED'] &&
+        data.qualifyingDepositTokens is number && data.qualifyingDepositTokens >= 0 &&
+        data.referrerRewardTokens is number && data.referrerRewardTokens >= 0 &&
+        data.refereeRewardTokens is number && data.refereeRewardTokens >= 0 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidRiskAlert(data, alertId) {
+      return data.keys().hasAll([
+          'id', 'type', 'severity', 'title', 'details', 'acknowledged', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'type', 'severity', 'userId', 'username', 'title',
+          'details', 'acknowledged', 'acknowledgedBy', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.id == alertId &&
+        isNonEmptyString(data.type, 2, 64) &&
+        data.severity in ['INFO', 'WARNING', 'CRITICAL'] &&
+        isOptionalString(data, 'userId', 128) &&
+        isOptionalString(data, 'username', 64) &&
+        isNonEmptyString(data.title, 2, 160) &&
+        isNonEmptyString(data.details, 2, 1000) &&
+        data.acknowledged is bool &&
+        isOptionalString(data, 'acknowledgedBy', 160) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAuditLog(data, logId) {
+      return data.keys().hasAll(['id', 'adminUid', 'adminEmail', 'action', 'target', 'details', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'adminUid', 'adminEmail', 'action', 'target', 'details', 'createdAt']) &&
+        isValidId(data.id) &&
+        data.id == logId &&
+        isValidId(data.adminUid) &&
+        isNonEmptyString(data.adminEmail, 3, 160) &&
+        isNonEmptyString(data.action, 2, 64) &&
+        isNonEmptyString(data.target, 1, 160) &&
+        isNonEmptyString(data.details, 1, 500) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidPlatformConfig(data, configId) {
+      return data.keys().hasAll(['id', 'updatedByUid', 'configJson', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'updatedByUid', 'configJson', 'updatedAt']) &&
+        data.id == configId &&
+        data.id in ['economy', 'bot', 'promo', 'summary'] &&
+        isValidId(data.updatedByUid) &&
+        isNonEmptyString(data.configJson, 2, 65536) &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidFeatureModule(data, moduleId) {
+      return data.keys().hasAll(['id', 'title', 'description', 'category', 'status', 'version', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'title', 'description', 'category', 'status', 'version', 'updatedAt']) &&
+        isValidId(data.id) &&
+        data.id == moduleId &&
+        data.id.size() >= 2 && data.id.size() <= 64 &&
+        isNonEmptyString(data.title, 1, 80) &&
+        isNonEmptyString(data.description, 1, 240) &&
+        data.category in ['GAMING', 'SPORTS', 'FINANCE', 'SOCIAL'] &&
+        data.status in ['LIVE', 'COMING_SOON', 'MAINTENANCE'] &&
+        isNonEmptyString(data.version, 1, 24) &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidArenaTelemetry(data, slotId) {
+      return data.keys().hasAll(['id', 'updatedByUid', 'summaryJson', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'updatedByUid', 'summaryJson', 'updatedAt']) &&
+        isValidId(data.id) &&
+        data.id == slotId &&
+        data.id.size() >= 2 && data.id.size() <= 64 &&
+        isValidId(data.updatedByUid) &&
+        isNonEmptyString(data.summaryJson, 2, 100000) &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidConnectionTestDoc(data) {
+      return data.keys().hasAll(['status', 'checkedAt']) &&
+        data.keys().hasOnly(['status', 'checkedAt']) &&
+        isNonEmptyString(data.status, 1, 32) &&
+        data.checkedAt is timestamp;
+    }
+
+    // -------------------------------------------------------------------------
+    // Collection Rules
+    // -------------------------------------------------------------------------
+
+    // 1. Authorized Admins Registry
+    match /admins/{uid} {
+      allow get: if isValidId(uid) && (isOwner(uid) || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isValidId(uid) &&
+        isBootstrappedAdmin() &&
+        isValidAdminOperator(incoming(), uid) &&
+        incoming().uid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(uid) &&
+        isBootstrappedAdmin() &&
+        isValidAdminOperator(incoming(), uid) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['username', 'email', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // 2. Player Accounts & Isolated PII / Ledgers
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isVerifiedUser() && resource.data.uid == request.auth.uid);
+
+      allow create: if isValidId(userId) &&
+        isVerifiedUser() &&
+        isValidUserAccount(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time && (
+          isAdmin() || (
+            isOwner(userId) &&
+            incoming().uid == request.auth.uid &&
+            incoming().role == 'PLAYER' &&
+            incoming().status == 'ACTIVE' &&
+            incoming().kycStatus == 'UNVERIFIED'
+          )
+        );
+
+      allow update: if isValidId(userId) &&
+        isVerifiedUser() &&
+        isValidUserAccount(incoming(), userId) &&
+        incoming().id == existing().id &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() || (
+            isOwner(userId) &&
+            incoming().username == existing().username &&
+            incoming().role == existing().role &&
+            incoming().status == existing().status &&
+            incoming().kycStatus == existing().kycStatus &&
+            incoming().availableBalance == existing().availableBalance &&
+            incoming().heldBalance == existing().heldBalance &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'avatarUrl', 'avatarFrameId', 'dailyBetLimitTokens', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isValidId(userId) && isAdmin();
+
+      // Strictly isolated PII, KYC docs, and Payout details
+      match /private/{infoId} {
+        allow get: if isValidId(userId) && isValidId(infoId) && (isOwner(userId) || isAdmin());
+        allow list: if isBootstrappedAdmin() || (isVerifiedUser() && resource.data.uid == request.auth.uid);
+
+        allow create: if isValidId(userId) && isValidId(infoId) &&
+          isVerifiedUser() &&
+          isValidUserPrivateInfo(incoming(), userId) &&
+          existsAfter(/databases/$(database)/documents/users/$(userId)) &&
+          incoming().updatedAt == request.time && (
+            isAdmin() || (isOwner(userId) && infoId == 'info')
+          );
+
+        allow update: if isValidId(userId) && isValidId(infoId) &&
+          isVerifiedUser() &&
+          isValidUserPrivateInfo(incoming(), userId) &&
+          existsAfter(/databases/$(database)/documents/users/$(userId)) &&
+          incoming().uid == existing().uid &&
+          incoming().updatedAt == request.time && (
+            isAdmin() || (
+              isOwner(userId) &&
+              infoId == 'info' &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'email', 'country', 'phoneNumber', 'dateOfBirth', 'ageVerified',
+                'kycDocumentName', 'savedCryptoAddress', 'savedBankName',
+                'savedBankBranch', 'savedBankHolder', 'savedBankAccount', 'updatedAt'
+              ])
+            )
+          );
+
+        allow delete: if isValidId(userId) && isValidId(infoId) && isAdmin();
+      }
+
+      // Immutable Wallet Transaction History
+      match /transactions/{txId} {
+        allow get: if isValidId(userId) && isValidId(txId) && (isOwner(userId) || isAdmin());
+        allow list: if isBootstrappedAdmin() || (isVerifiedUser() && resource.data.userId == request.auth.uid);
+
+        allow create: if isValidId(userId) && isValidId(txId) &&
+          isAdmin() &&
+          isValidWalletTransaction(incoming(), txId, userId) &&
+          existsAfter(/databases/$(database)/documents/users/$(userId)) &&
+          incoming().createdAt == request.time;
+
+        allow update, delete: if false;
+      }
+    }
+
+    // 3. Payment & Treasury Queue
+    match /payments/{paymentId} {
+      allow get: if isValidId(paymentId) && (isAdmin() || (isVerifiedUser() && existing().userId == request.auth.uid));
+      allow list: if isBootstrappedAdmin() || (isVerifiedUser() && resource.data.userId == request.auth.uid);
+
+      allow create: if isValidId(paymentId) &&
+        isVerifiedUser() &&
+        isValidPaymentRequest(incoming(), paymentId) &&
+        existsAfter(/databases/$(database)/documents/users/$(incoming().userId)) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time && (
+          isAdmin() || (
+            incoming().userId == request.auth.uid &&
+            incoming().status == 'PENDING' &&
+            !('adminNote' in incoming())
+          )
+        );
+
+      allow update: if isValidId(paymentId) &&
+        isVerifiedUser() &&
+        isValidPaymentRequest(incoming(), paymentId) &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().kind == existing().kind &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() || (
+            existing().userId == request.auth.uid &&
+            existing().status == 'PENDING' &&
+            incoming().status == 'PENDING' &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'referenceId', 'receiptPreviewName', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // 4. Support & Dispute Tickets
+    match /tickets/{ticketId} {
+      allow get: if isValidId(ticketId) && (isAdmin() || (isVerifiedUser() && existing().userId == request.auth.uid));
+      allow list: if isBootstrappedAdmin() || (isVerifiedUser() && resource.data.userId == request.auth.uid);
+
+      allow create: if isValidId(ticketId) &&
+        isVerifiedUser() &&
+        isValidSupportTicket(incoming(), ticketId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time && (
+          isAdmin() || (
+            incoming().userId == request.auth.uid &&
+            existsAfter(/databases/$(database)/documents/users/$(incoming().userId)) &&
+            incoming().status == 'Open · Under Review' &&
+            !('adminReply' in incoming())
+          )
+        );
+
+      allow update: if isValidId(ticketId) &&
+        isVerifiedUser() &&
+        isValidSupportTicket(incoming(), ticketId) &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() || (
+            existing().userId == request.auth.uid &&
+            existing().status != 'Resolved' &&
+            incoming().status == existing().status &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['message', 'referenceId', 'updatedAt'])
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // 5. Invite & Earn Referrals
+    match /referrals/{referralId} {
+      allow get: if isValidId(referralId) && (
+        isAdmin() || (
+          isVerifiedUser() &&
+          (existing().referrerUserId == request.auth.uid || existing().refereeUserId == request.auth.uid)
+        )
+      );
+      allow list: if isBootstrappedAdmin() || (
+        isVerifiedUser() &&
+        (resource.data.referrerUserId == request.auth.uid || resource.data.refereeUserId == request.auth.uid)
+      );
+
+      allow create: if isValidId(referralId) &&
+        isAdmin() &&
+        isValidReferralRecord(incoming(), referralId) &&
+        existsAfter(/databases/$(database)/documents/users/$(incoming().referrerUserId)) &&
+        existsAfter(/databases/$(database)/documents/users/$(incoming().refereeUserId)) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(referralId) &&
+        isAdmin() &&
+        isValidReferralRecord(incoming(), referralId) &&
+        existing().status != 'REWARDED' &&
+        incoming().id == existing().id &&
+        incoming().referrerUserId == existing().referrerUserId &&
+        incoming().refereeUserId == existing().refereeUserId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'qualifyingDepositTokens', 'referrerRewardTokens', 'refereeRewardTokens', 'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // 6. Anti-Fraud & Risk Alerts
+    match /riskAlerts/{alertId} {
+      allow get: if isValidId(alertId) && isAdmin();
+      allow list: if isBootstrappedAdmin();
+
+      allow create: if isValidId(alertId) &&
+        isAdmin() &&
+        isValidRiskAlert(incoming(), alertId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(alertId) &&
+        isAdmin() &&
+        isValidRiskAlert(incoming(), alertId) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'acknowledged', 'acknowledgedBy', 'severity', 'details', 'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // 7. Append-Only Admin Audit Logs
+    match /auditLogs/{logId} {
+      allow get: if isValidId(logId) && isAdmin();
+      allow list: if isBootstrappedAdmin();
+
+      allow create: if isValidId(logId) &&
+        isAdmin() &&
+        isValidAuditLog(incoming(), logId) &&
+        incoming().adminUid == request.auth.uid &&
+        incoming().createdAt == request.time;
+
+      allow update, delete: if false;
+    }
+
+    // 8. Authoritative Platform Config Docs (Economy, Bot, Promo, Summary)
+    match /platformConfig/{configId} {
+      allow get: if isValidId(configId) && (configId in ['economy', 'promo'] || isAdmin());
+      allow list: if isBootstrappedAdmin();
+
+      allow create: if isValidId(configId) &&
+        isAdmin() &&
+        isValidPlatformConfig(incoming(), configId) &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(configId) &&
+        isAdmin() &&
+        isValidPlatformConfig(incoming(), configId) &&
+        incoming().id == existing().id &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['configJson', 'updatedByUid', 'updatedAt']);
+
+      allow delete: if false;
+    }
+
+    // 9. Feature Modules Lifecycle Registry
+    match /featureModules/{moduleId} {
+      allow get: if isValidId(moduleId) && isVerifiedUser();
+      allow list: if isBootstrappedAdmin();
+
+      allow create: if isValidId(moduleId) &&
+        isAdmin() &&
+        isValidFeatureModule(incoming(), moduleId) &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(moduleId) &&
+        isAdmin() &&
+        isValidFeatureModule(incoming(), moduleId) &&
+        incoming().id == existing().id &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'description', 'category', 'status', 'version', 'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // 10. Live Arena & Sports Market Telemetry
+    match /telemetry/{slotId} {
+      allow get: if isValidId(slotId) && isAdmin();
+      allow list: if isBootstrappedAdmin();
+
+      allow create: if isValidId(slotId) &&
+        isAdmin() &&
+        isValidArenaTelemetry(incoming(), slotId) &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(slotId) &&
+        isAdmin() &&
+        isValidArenaTelemetry(incoming(), slotId) &&
+        incoming().id == existing().id &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['summaryJson', 'updatedByUid', 'updatedAt']);
+
+      allow delete: if false;
+    }
+
+    // 11. Startup Connectivity Health Check
+    match /test/{docId} {
+      allow get: if isValidId(docId) && docId == 'connection';
+      allow list: if false;
+      allow create, update: if isValidId(docId) &&
+        docId == 'connection' &&
+        isAdmin() &&
+        isValidConnectionTestDoc(incoming()) &&
+        incoming().checkedAt == request.time;
+      allow delete: if false;
+    }
+  }
+}

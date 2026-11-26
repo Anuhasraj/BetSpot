@@ -1,0 +1,178 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-display: 'Outfit', system-ui, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #190907;
+    background-image: radial-gradient(circle at 50% 0%, #3a140d 0%, #190907 62%);
+    color: #fef3c7;
+    letter-spacing: 0.005em;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono-tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom subtle scrollbars for warm mahogany arena panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #190907;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #5b281c;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #7c3827;
+}
+
+@keyframes playerArmThrow {
+  0% {
+    transform: rotate(0deg);
+  }
+  14% {
+    transform: rotate(-36deg) translateY(-4px);
+  }
+  28% {
+    transform: rotate(8deg);
+  }
+  40% {
+    transform: rotate(-52deg) translateX(-6px);
+  }
+  52% {
+    transform: rotate(58deg) translateX(10px);
+  }
+  68%, 100% {
+    transform: rotate(6deg);
+  }
+}
+
+@keyframes diePerspectiveFlight {
+  /* Starts in character hand (left side, far from plank box) */
+  0% {
+    left: 20%;
+    top: 56%;
+    transform: translate(-50%, -50%) scale(0.85) rotate(0deg);
+    opacity: 1;
+  }
+  /* Tosses high up into the air above hand */
+  15% {
+    left: 22%;
+    top: 16%;
+    transform: translate(-50%, -50%) scale(1.1) rotate(180deg);
+  }
+  /* Drops back & caught in hand */
+  29% {
+    left: 21%;
+    top: 52%;
+    transform: translate(-50%, -50%) scale(0.88) rotate(360deg);
+  }
+  /* Launches across the spatial distance directly onto the Large Strike Plank at right */
+  50% {
+    left: 82%;
+    top: 34%;
+    transform: translate(-50%, -50%) scale(0.95) rotate(680deg);
+  }
+  /* Rebounds off the large plank into the enclosed 3-plank center */
+  66% {
+    left: 65%;
+    top: 62%;
+    transform: translate(-50%, -50%) scale(1.02) rotate(1020deg);
+  }
+  82% {
+    left: 72%;
+    top: 56%;
+    transform: translate(-50%, -50%) scale(0.96) rotate(1340deg);
+  }
+  /* Comes to a full halt inside the center pit */
+  100% {
+    left: 68%;
+    top: 58%;
+    transform: translate(-50%, -50%) scale(0.92) rotate(1440deg);
+    opacity: 1;
+  }
+}
+
+@keyframes farPlankRecoil {
+  0%, 47% {
+    transform: translateX(0px);
+  }
+  51% {
+    transform: translateX(7px) scaleX(0.95);
+  }
+  62%, 100% {
+    transform: translateX(0px) scaleX(1);
+  }
+}
+
+@keyframes farImpactBurst {
+  0%, 46% {
+    transform: translate(-50%, -50%) scale(0.25);
+    opacity: 0;
+  }
+  51% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.95;
+  }
+  74%, 100% {
+    transform: translate(-50%, -50%) scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes topViewReveal {
+  0% {
+    transform: scale(0.86);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-player-arm {
+  transform-origin: 24px 30px;
+  animation: playerArmThrow 2.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-die-flight {
+  animation: diePerspectiveFlight 2.3s cubic-bezier(0.25, 0.85, 0.35, 1) forwards;
+}
+
+.animate-far-plank-recoil {
+  animation: farPlankRecoil 2.3s ease-out forwards;
+}
+
+.animate-far-impact {
+  animation: farImpactBurst 2.3s ease-out forwards;
+}
+
+.animate-topview-reveal {
+  animation: topViewReveal 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+

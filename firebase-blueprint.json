@@ -1,0 +1,281 @@
+{
+  "entities": {
+    "AdminOperator": {
+      "title": "AdminOperator",
+      "description": "Authorized administrative operator document keyed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "username": { "type": "string", "minLength": 3, "maxLength": 64, "pattern": "^[a-zA-Z0-9_.@\\-]+$" },
+        "role": { "type": "string", "enum": ["ADMIN"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "username", "role", "createdAt", "updatedAt"]
+    },
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Authenticated player wallet, compliance, and promo exposure state (non-PII).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "uid": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "username": { "type": "string", "minLength": 3, "maxLength": 32, "pattern": "^[a-zA-Z0-9_.-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "role": { "type": "string", "enum": ["PLAYER", "HIGH_ROLLER"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED"] },
+        "availableBalance": { "type": "number" },
+        "heldBalance": { "type": "number" },
+        "kycStatus": { "type": "string", "enum": ["UNVERIFIED", "PENDING", "VERIFIED"] },
+        "avatarUrl": { "type": "string", "maxLength": 8192 },
+        "avatarFrameId": { "type": "string", "maxLength": 64 },
+        "dailyBetLimitTokens": { "type": "number" },
+        "referralCode": { "type": "string", "maxLength": 32 },
+        "promoTokensRemaining": { "type": "number" },
+        "realDepositedTokens": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "uid", "username", "displayName", "role", "status", "availableBalance", "heldBalance", "kycStatus", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Strictly isolated PII, KYC references, and payout banking/crypto coordinates.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "country": { "type": "string", "maxLength": 80 },
+        "phoneNumber": { "type": "string", "maxLength": 40 },
+        "dateOfBirth": { "type": "string", "maxLength": 24 },
+        "ageVerified": { "type": "boolean" },
+        "kycDocumentName": { "type": "string", "maxLength": 160 },
+        "savedCryptoAddress": { "type": "string", "maxLength": 128 },
+        "savedBankName": { "type": "string", "maxLength": 120 },
+        "savedBankBranch": { "type": "string", "maxLength": 120 },
+        "savedBankHolder": { "type": "string", "maxLength": 120 },
+        "savedBankAccount": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "updatedAt"]
+    },
+    "WalletTransaction": {
+      "title": "WalletTransaction",
+      "description": "Immutable player wallet transaction ledger record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "type": { "type": "string", "maxLength": 48 },
+        "amount": { "type": "number" },
+        "balanceAfter": { "type": "number" },
+        "heldAfter": { "type": "number" },
+        "description": { "type": "string", "maxLength": 240 },
+        "referenceId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "type", "amount", "balanceAfter", "heldAfter", "description", "createdAt"]
+    },
+    "PaymentRequest": {
+      "title": "PaymentRequest",
+      "description": "Deposit or withdrawal request queued for treasury approval.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "username": { "type": "string", "minLength": 2, "maxLength": 32 },
+        "kind": { "type": "string", "enum": ["DEPOSIT", "WITHDRAWAL"] },
+        "method": { "type": "string", "maxLength": 48 },
+        "tokenAmount": { "type": "number" },
+        "usdEquivalent": { "type": "number" },
+        "localCurrencyEquivalent": { "type": "number" },
+        "referenceId": { "type": "string", "minLength": 2, "maxLength": 128 },
+        "destinationOrBankDetails": { "type": "string", "maxLength": 300 },
+        "receiptPreviewName": { "type": "string", "maxLength": 160 },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "adminNote": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "username", "kind", "method", "tokenAmount", "usdEquivalent", "referenceId", "status", "createdAt", "updatedAt"]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "Player support or dispute inquiry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "category": { "type": "string", "maxLength": 64 },
+        "referenceId": { "type": "string", "maxLength": 128 },
+        "subject": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "message": { "type": "string", "minLength": 5, "maxLength": 2000 },
+        "status": { "type": "string", "enum": ["Open · Under Review", "In Progress", "Resolved"] },
+        "adminReply": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "name", "email", "category", "subject", "message", "status", "createdAt", "updatedAt"]
+    },
+    "ReferralRecord": {
+      "title": "ReferralRecord",
+      "description": "Invite & Earn referral attribution and qualifying reward state.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "referrerUserId": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "referrerUsername": { "type": "string", "minLength": 2, "maxLength": 32 },
+        "referrerCode": { "type": "string", "maxLength": 32 },
+        "refereeUserId": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "refereeUsername": { "type": "string", "minLength": 2, "maxLength": 32 },
+        "status": { "type": "string", "enum": ["PENDING_DEPOSIT", "REWARDED"] },
+        "qualifyingDepositTokens": { "type": "number" },
+        "referrerRewardTokens": { "type": "number" },
+        "refereeRewardTokens": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "referrerUserId", "referrerUsername", "referrerCode", "refereeUserId", "refereeUsername", "status", "qualifyingDepositTokens", "referrerRewardTokens", "refereeRewardTokens", "createdAt", "updatedAt"]
+    },
+    "RiskAlert": {
+      "title": "RiskAlert",
+      "description": "Anti-fraud, win-streak, bot loss cap, and promo abuse risk alert.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "type": { "type": "string", "maxLength": 64 },
+        "severity": { "type": "string", "enum": ["INFO", "WARNING", "CRITICAL"] },
+        "userId": { "type": "string", "maxLength": 128 },
+        "username": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 160 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "acknowledged": { "type": "boolean" },
+        "acknowledgedBy": { "type": "string", "maxLength": 160 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "type", "severity", "title", "details", "acknowledged", "createdAt", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Append-only server and admin moderation audit entry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "adminUid": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "adminEmail": { "type": "string", "maxLength": 160 },
+        "action": { "type": "string", "maxLength": 64 },
+        "target": { "type": "string", "maxLength": 160 },
+        "details": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "adminUid", "adminEmail", "action", "target", "details", "createdAt"]
+    },
+    "PlatformConfigDoc": {
+      "title": "PlatformConfigDoc",
+      "description": "Structured platform settings document (economy, bot, promo, summary).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "enum": ["economy", "bot", "promo", "summary"] },
+        "updatedByUid": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "configJson": { "type": "string", "maxLength": 65536 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "updatedByUid", "configJson", "updatedAt"]
+    },
+    "FeatureModule": {
+      "title": "FeatureModule",
+      "description": "OOP feature module registry entry supporting LIVE and COMING_SOON states.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 240 },
+        "category": { "type": "string", "enum": ["GAMING", "SPORTS", "FINANCE", "SOCIAL"] },
+        "status": { "type": "string", "enum": ["LIVE", "COMING_SOON", "MAINTENANCE"] },
+        "version": { "type": "string", "maxLength": 24 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "description", "category", "status", "version", "updatedAt"]
+    },
+    "ArenaTelemetry": {
+      "title": "ArenaTelemetry",
+      "description": "Live room and sports market snapshot for Admin visibility.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 2, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "updatedByUid": { "type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "summaryJson": { "type": "string", "maxLength": 100000 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "updatedByUid", "summaryJson", "updatedAt"]
+    },
+    "ConnectionTestDoc": {
+      "title": "ConnectionTestDoc",
+      "description": "Read-only Firestore health/connectivity check document.",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "maxLength": 32 },
+        "checkedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["status", "checkedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminOperator" },
+      "description": "Authorized admin operator lookup table."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "Player wallet balances, compliance, and referral metrics."
+    },
+    "/users/{userId}/private/{infoId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Strictly isolated PII, bank details, and KYC reference fields."
+    },
+    "/users/{userId}/transactions/{txId}": {
+      "schema": { "$ref": "#/entities/WalletTransaction" },
+      "description": "Immutable wallet transaction history per user."
+    },
+    "/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/PaymentRequest" },
+      "description": "Deposit and withdrawal requests."
+    },
+    "/tickets/{ticketId}": {
+      "schema": { "$ref": "#/entities/SupportTicket" },
+      "description": "Support & dispute tickets."
+    },
+    "/referrals/{referralId}": {
+      "schema": { "$ref": "#/entities/ReferralRecord" },
+      "description": "Referral invite attributions and qualifying reward records."
+    },
+    "/riskAlerts/{alertId}": {
+      "schema": { "$ref": "#/entities/RiskAlert" },
+      "description": "Anti-fraud, promo abuse, and bot risk guard alerts."
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Append-only admin moderation audit trail."
+    },
+    "/platformConfig/{configId}": {
+      "schema": { "$ref": "#/entities/PlatformConfigDoc" },
+      "description": "Authoritative economy, bot, promo, and treasury configuration snapshots."
+    },
+    "/featureModules/{moduleId}": {
+      "schema": { "$ref": "#/entities/FeatureModule" },
+      "description": "Feature module lifecycle flags (LIVE / COMING_SOON / MAINTENANCE)."
+    },
+    "/telemetry/{slotId}": {
+      "schema": { "$ref": "#/entities/ArenaTelemetry" },
+      "description": "Live dice and sports market snapshots."
+    },
+    "/test/{docId}": {
+      "schema": { "$ref": "#/entities/ConnectionTestDoc" },
+      "description": "Startup Firestore connection validation check."
+    }
+  }
+}
