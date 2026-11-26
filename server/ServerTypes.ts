@@ -381,6 +381,7 @@ export interface ServerContactConfig {
   supportEmail: string;
   telegramUsername: string;
   telegramLink: string;
+  usdtDepositAddress: string;
   updatedAt: number;
   updatedBy?: string;
 }
@@ -509,6 +510,7 @@ export function defaultContactConfig(): ServerContactConfig {
     supportEmail: 'support@betspot.gg',
     telegramUsername: 'BetSpotSupport',
     telegramLink: 'https://t.me/BetSpotSupport',
+    usdtDepositAddress: 'TX7mK9pQ2vR8nL4wZ6cB3yH5jD1sF9aE8xP',
     updatedAt: 0,
     updatedBy: 'System',
   };

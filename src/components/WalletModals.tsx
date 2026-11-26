@@ -73,6 +73,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ isOpen, engine, onCl
   const numericUsd = Math.max(0, Number(usdInput) || 0);
   const previewTokens = TokenEconomy.usdToTokens(numericUsd);
   const usdtWalletInfo = PLATFORM_CRYPTO_DEPOSIT_ADDRESSES[PaymentMethod.CRYPTO_USDT];
+  const usdtDepositAddress = engine.contactConfig.usdtDepositAddress?.trim() || usdtWalletInfo.address;
 
   const handleCopy = async (text: string, field: 'ref' | 'address') => {
     try {
@@ -229,11 +230,11 @@ export const DepositModal: React.FC<DepositModalProps> = ({ isOpen, engine, onCl
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono-tabular text-xs sm:text-sm font-bold text-slate-100 break-all">
-                    {usdtWalletInfo.address}
+                    {usdtDepositAddress}
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleCopy(usdtWalletInfo.address, 'address')}
+                    onClick={() => handleCopy(usdtDepositAddress, 'address')}
                     className="flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer shrink-0"
                   >
                     {copiedField === 'address' ? (

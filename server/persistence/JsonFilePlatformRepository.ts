@@ -192,11 +192,17 @@ export class PlatformConfigSanitizer {
     const rawLink = typeof obj.telegramLink === 'string' && obj.telegramLink.trim()
       ? obj.telegramLink.trim()
       : `https://t.me/${rawTg}`;
+    const rawUsdt = typeof obj.usdtDepositAddress === 'string' ? obj.usdtDepositAddress.trim() : '';
+    const usdtDepositAddress =
+      rawUsdt && !/\s/.test(rawUsdt) && rawUsdt.length >= 10 && rawUsdt.length <= 128
+        ? rawUsdt
+        : existing.usdtDepositAddress || defaultContactConfig().usdtDepositAddress;
 
     return {
       supportEmail: email,
       telegramUsername: rawTg,
       telegramLink: rawLink,
+      usdtDepositAddress,
       updatedAt: Date.now(),
       updatedBy: updatedBy ?? existing.updatedBy,
     };

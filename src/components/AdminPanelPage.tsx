@@ -183,6 +183,14 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({ engine, onError 
   const [contactSaving, setContactSaving] = useState<boolean>(false);
   const [contactFeedback, setContactFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
+  // Platform USDT (TRC-20) Deposit Address
+  const [usdtDepositAddressDraft, setUsdtDepositAddressDraft] = useState<string>(
+    () => engine.contactConfig.usdtDepositAddress || 'TX7mK9pQ2vR8nL4wZ6cB3yH5jD1sF9aE8xP'
+  );
+  const [usdtAddressDirty, setUsdtAddressDirty] = useState<boolean>(false);
+  const [usdtAddressSaving, setUsdtAddressSaving] = useState<boolean>(false);
+  const [usdtAddressFeedback, setUsdtAddressFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+
   // Token Peg & Limits Controls
   const [economyDraft, setEconomyDraft] = useState<EconomyConfig>(() => ({
     ...DEFAULT_ECONOMY_CONFIG,
@@ -237,6 +245,11 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({ engine, onError 
               `https://t.me/${(store.contactConfig.telegramUsername || 'BetSpotSupport').replace(/^@/, '')}`
           );
         }
+        if (store.contactConfig && !usdtAddressDirty) {
+          setUsdtDepositAddressDraft(
+            store.contactConfig.usdtDepositAddress || 'TX7mK9pQ2vR8nL4wZ6cB3yH5jD1sF9aE8xP'
+          );
+        }
       } catch (err) {
         if (!silent) {
           onError(err instanceof Error ? err.message : 'Unable to fetch Admin store.');
@@ -245,7 +258,7 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({ engine, onError 
         if (!silent) setLoadingStore(false);
       }
     },
-    [engine, engine.isAdmin, onError, economyConfigDirty, botConfigDirty, promoConfigDirty]
+    [engine, engine.isAdmin, onError, economyConfigDirty, botConfigDirty, promoConfigDirty, contactConfigDirty, usdtAddressDirty]
   );
 
   useEffect(() => {
@@ -1065,6 +1078,42 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({ engine, onError 
       onError(msg);
     } finally {
       setContactSaving(false);
+    }
+  };
+
+  const handleSaveUsdtDepositAddress = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setUsdtAddressSaving(true);
+    setUsdtAddressFeedback(null);
+    try {
+      const cleanAddr = usdtDepositAddressDraft.trim();
+      if (!cleanAddr || /\s/.test(cleanAddr) || cleanAddr.length < 10 || cleanAddr.length > 128) {
+        setUsdtAddressFeedback({
+          ok: false,
+          msg: 'Please enter a valid USDT (TRC-20) wallet address (no spaces, 10-128 chars).',
+        });
+        setUsdtAddressSaving(false);
+        return;
+      }
+
+      const res = await adminAuthClient.updateContactConfig({
+        usdtDepositAddress: cleanAddr,
+      });
+      setServerStore(res.store);
+      void engine.fetchContactConfig();
+      setUsdtAddressDirty(false);
+      setUsdtAddressFeedback({
+        ok: true,
+        msg: 'USDT (TRC-20) deposit address updated and live for all players!',
+      });
+      showSuccess('USDT (TRC-20) deposit address updated.');
+      setTimeout(() => setUsdtAddressFeedback(null), 4000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to update USDT deposit address.';
+      setUsdtAddressFeedback({ ok: false, msg });
+      onError(msg);
+    } finally {
+      setUsdtAddressSaving(false);
     }
   };
 
@@ -3570,7 +3619,58 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({ engine, onError 
 
       {/* TAB 4: PENDING DEPOSIT & WITHDRAWAL QUEUE + PROCESSED HISTORY + MANUAL TOP-UP */}
       {subTab === 'payments' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="space-y-5">
+          {/* Platform USDT (TRC-20) Deposit Wallet Address */}
+          <div className="rounded-xl border border-emerald-500/30 bg-[#131A26] p-4 sm:p-5 space-y-3 shadow-lg">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="font-display text-sm sm:text-base font-semibold text-emerald-300">
+                  Platform USDT (TRC-20) Deposit Wallet Address
+                </h2>
+                <p className="text-[11px] text-slate-400">
+                  This wallet address is displayed to all players inside the Deposit modal for USDT (TRC-20) transfers.
+                </p>
+              </div>
+              {usdtAddressFeedback && (
+                <span
+                  className={`text-xs font-semibold px-2.5 py-1 rounded-md ${
+                    usdtAddressFeedback.ok
+                      ? 'bg-emerald-950/70 border border-emerald-500/50 text-emerald-300'
+                      : 'bg-rose-950/70 border border-rose-500/50 text-rose-300'
+                  }`}
+                >
+                  {usdtAddressFeedback.msg}
+                </span>
+              )}
+            </div>
+
+            <form
+              onSubmit={(e) => void handleSaveUsdtDepositAddress(e)}
+              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5"
+            >
+              <input
+                type="text"
+                value={usdtDepositAddressDraft}
+                onChange={(e) => {
+                  setUsdtDepositAddressDraft(e.target.value);
+                  setUsdtAddressDirty(true);
+                }}
+                placeholder="T..."
+                className="flex-1 rounded-lg border border-slate-700 bg-[#090D14] px-3 py-2 font-mono-tabular text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                required
+              />
+              <button
+                type="submit"
+                disabled={usdtAddressSaving}
+                className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500/50 bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-2 text-xs font-bold text-slate-950 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-50 cursor-pointer shadow-md"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${usdtAddressSaving ? 'animate-spin' : ''}`} />
+                <span>{usdtAddressSaving ? 'Saving...' : 'Save USDT Address'}</span>
+              </button>
+            </form>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-7 space-y-5">
             {/* Active Pending Requests Queue (Items disappear immediately upon Approve/Reject) */}
             <div className="rounded-xl border border-amber-500/30 bg-[#131A26] p-5 space-y-4">
@@ -3945,6 +4045,7 @@ export const AdminPanelPage: React.FC<AdminPanelPageProps> = ({ engine, onError 
               Execute Manual Wallet Top-Up
             </button>
           </form>
+          </div>
         </div>
       )}
 

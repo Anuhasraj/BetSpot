@@ -82,6 +82,7 @@ export interface ContactConfig {
   supportEmail: string;
   telegramUsername: string;
   telegramLink: string;
+  usdtDepositAddress?: string;
   updatedAt: number;
 }
 
@@ -89,6 +90,7 @@ export const DEFAULT_CONTACT_CONFIG: ContactConfig = {
   supportEmail: 'support@betspot.gg',
   telegramUsername: 'BetSpotSupport',
   telegramLink: 'https://t.me/BetSpotSupport',
+  usdtDepositAddress: 'TX7mK9pQ2vR8nL4wZ6cB3yH5jD1sF9aE8xP',
   updatedAt: 0,
 };
 
@@ -592,6 +594,7 @@ export class BetSpotEngine {
         telegramLink:
           cc.telegramLink ||
           `https://t.me/${(cc.telegramUsername || DEFAULT_CONTACT_CONFIG.telegramUsername).replace(/^@/, '')}`,
+        usdtDepositAddress: cc.usdtDepositAddress?.trim() || DEFAULT_CONTACT_CONFIG.usdtDepositAddress,
         updatedAt: Number(cc.updatedAt) || 0,
       };
     }
@@ -776,6 +779,8 @@ export class BetSpotEngine {
           telegramLink:
             res.config.telegramLink ||
             `https://t.me/${(res.config.telegramUsername || DEFAULT_CONTACT_CONFIG.telegramUsername).replace(/^@/, '')}`,
+          usdtDepositAddress:
+            res.config.usdtDepositAddress?.trim() || DEFAULT_CONTACT_CONFIG.usdtDepositAddress,
           updatedAt: Number(res.config.updatedAt) || 0,
         };
         this.eventBus.emit('state:changed');

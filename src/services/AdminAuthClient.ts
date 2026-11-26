@@ -558,9 +558,10 @@ class AdminAuthClientService {
   }
 
   public async updateContactConfig(payload: {
-    supportEmail: string;
-    telegramUsername: string;
+    supportEmail?: string;
+    telegramUsername?: string;
     telegramLink?: string;
+    usdtDepositAddress?: string;
   }): Promise<{ config: ContactConfig; store: AdminServerStore }> {
     const res = await fetch('/api/admin/contact-config', {
       method: 'PUT',
