@@ -1206,23 +1206,23 @@ export const DiceArenaPage: React.FC<DiceArenaPageProps> = ({
         </div>
       </div>
 
-      {/* ARENA STAGE: Left Flank | 3D Ground Center | Right Flank Side-by-Side Across Mobile, Tablet, and Desktop */}
-      <div className="grid grid-cols-[84px_minmax(0,1fr)_84px] sm:grid-cols-[148px_minmax(0,1fr)_148px] md:grid-cols-[176px_minmax(0,1fr)_176px] lg:grid-cols-[204px_minmax(0,1fr)_204px] xl:grid-cols-[232px_minmax(0,1fr)_232px] gap-1.5 sm:gap-2.5 md:gap-3 items-stretch">
+      {/* ARENA STAGE: Full-width 3D Ground on top + 2-column seats below on Mobile; 3-column Side-by-Side on Tablet/Desktop */}
+      <div className="grid grid-cols-2 sm:grid-cols-[148px_minmax(0,1fr)_148px] md:grid-cols-[176px_minmax(0,1fr)_176px] lg:grid-cols-[204px_minmax(0,1fr)_204px] xl:grid-cols-[232px_minmax(0,1fr)_232px] gap-2 sm:gap-2.5 md:gap-3 items-stretch">
         {/* LEFT FLANK */}
-        <aside className="flex flex-col gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-amber-500/25 bg-[#230C08]/90 p-1 sm:p-2 md:p-2.5 shadow-lg h-full">
-          <div className="flex-shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 px-0.5 sm:px-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-200/75 text-center sm:text-left">
+        <aside className="order-2 sm:order-none flex flex-col gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-amber-500/25 bg-[#230C08]/90 p-2 md:p-2.5 shadow-lg h-full min-w-0">
+          <div className="flex-shrink-0 flex items-center justify-between gap-1 px-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-200/75">
             <span>{halfSeats === 1 ? 'Seat 1' : `L 1–${halfSeats}`}</span>
             <span className="font-mono-tabular text-amber-300">
               {board.occupiedCount}/{board.maxSeats}
             </span>
           </div>
-          <div className="grid auto-rows-fr gap-1 sm:gap-1.5 flex-1">
+          <div className="grid auto-rows-fr gap-1.5 flex-1">
             {leftSeatIndices.map((idx) => renderSeatSlot(idx))}
           </div>
         </aside>
 
         {/* CENTER: MATCH HUD + 3D THROWING GROUND + ACTION CONTROLS + BETTING DASHBOARD BAR BELOW GROUND */}
-        <section className="rounded-xl sm:rounded-2xl border-2 border-amber-500/35 bg-gradient-to-b from-[#3A170E] to-[#260E09] p-1.5 sm:p-3 md:p-3.5 shadow-xl flex flex-col justify-between gap-1.5 sm:gap-3 min-w-0">
+        <section className="order-1 col-span-2 sm:order-none sm:col-span-1 rounded-xl sm:rounded-2xl border-2 border-amber-500/35 bg-gradient-to-b from-[#3A170E] to-[#260E09] p-2 sm:p-3 md:p-3.5 shadow-xl flex flex-col justify-between gap-2 sm:gap-3 min-w-0">
           {/* Compact Match HUD */}
           <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border border-amber-500/25 bg-[#1B0906]/90 px-2 py-1.5 sm:px-3.5 sm:py-2.5">
             <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
@@ -1537,8 +1537,8 @@ export const DiceArenaPage: React.FC<DiceArenaPageProps> = ({
         </section>
 
         {/* RIGHT FLANK */}
-        <aside className="flex flex-col gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-amber-500/25 bg-[#230C08]/90 p-1 sm:p-2 md:p-2.5 shadow-lg h-full">
-          <div className="flex-shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 px-0.5 sm:px-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-200/75 text-center sm:text-left">
+        <aside className="order-3 sm:order-none flex flex-col gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-amber-500/25 bg-[#230C08]/90 p-2 md:p-2.5 shadow-lg h-full min-w-0">
+          <div className="flex-shrink-0 flex items-center justify-between gap-1 px-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-200/75">
             <span>
               {board.maxSeats === 2
                 ? 'Seat 2'
@@ -1546,7 +1546,7 @@ export const DiceArenaPage: React.FC<DiceArenaPageProps> = ({
             </span>
             <span className="font-mono-tabular text-amber-300">{board.sideBettors.length} Watch</span>
           </div>
-          <div className="grid auto-rows-fr gap-1 sm:gap-1.5 flex-1">
+          <div className="grid auto-rows-fr gap-1.5 flex-1">
             {rightSeatIndices.map((idx) => renderSeatSlot(idx))}
           </div>
         </aside>

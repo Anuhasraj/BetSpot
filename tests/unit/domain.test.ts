@@ -238,8 +238,8 @@ describe('Domain Unit Tests', () => {
     users.set(p1.id, p1);
     users.set(p2.id, p2);
 
-    // R1: 4 vs 4 (tie) -> TB1: 3 vs 3 (tie again!) -> TB2: 6 vs 2 (p1 wins)
-    const board = new DiceBoard('b_double_tie', tier, new DeterministicRandom([4, 4, 3, 3, 6, 2]), strategy, 1);
+    // R1: 15 vs 15 (tie) -> TB1: 3 vs 3 (tie again!) -> TB2: 18 vs 6 (p1 wins)
+    const board = new DiceBoard('b_double_tie', tier, new DeterministicRandom([15, 15, 3, 3, 18, 6]), strategy, 1);
     board.joinMainSeat(p1, 100);
     board.joinMainSeat(p2, 100);
     board.startMatchIfReady((id) => users.get(id));

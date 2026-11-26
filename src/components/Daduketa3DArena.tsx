@@ -952,7 +952,7 @@ export const Daduketa3DArena: React.FC<Daduketa3DArenaProps> = ({
       {/* Isolated WebGL Mount Point (Zero React children or backdrop-filter overlays) */}
       <div
         ref={mountRef}
-        className={`w-full h-[240px] sm:h-[325px] md:h-[365px] lg:h-[400px] rounded-lg sm:rounded-xl overflow-hidden border ${theme.uiCanvasClass}`}
+        className={`w-full h-[265px] sm:h-[325px] md:h-[365px] lg:h-[400px] rounded-lg sm:rounded-xl overflow-hidden border ${theme.uiCanvasClass}`}
       />
     </div>
   );
